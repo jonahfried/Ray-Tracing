@@ -6,124 +6,6 @@ import (
 	"math"
 )
 
-type vector struct {
-	x, y, z float64
-}
-
-func makeVector(x, y, z float64) vector {
-	return vector{x, y, z}
-}
-
-func (v vector) dot(vec vector) float64 {
-	return v.x*vec.x + v.y*vec.y + v.z*vec.z
-}
-
-func cross(v1, v2 vector) vector {
-	x := (v1.y * v2.z) - (v1.z * v2.y)
-	y := (v1.x * v2.z) - (v1.z * v2.x)
-	z := (v1.x * v2.y) - (v1.y * v2.x)
-	return makeVector(x, y, z)
-}
-
-func (v vector) mag() float64 {
-	return math.Sqrt(v.dot(v))
-}
-
-func (v vector) direction() vector {
-	mag := v.mag()
-	if mag == 0 {
-		return makeVector(0, 0, 0)
-	}
-	return v.mul(1 / mag)
-}
-
-func (v vector) mul(s float64) vector {
-	v.x *= s
-	v.y *= s
-	v.z *= s
-	return v
-}
-
-func (v vector) addScalar(k float64) vector {
-	v.x += k
-	v.y += k
-	v.z += k
-	return v
-}
-
-func (v vector) add(vec vector) vector {
-	v.x += vec.x
-	v.y += vec.y
-	v.z += vec.z
-	return v
-}
-
-func (v vector) sub(vec vector) vector {
-	v.x -= vec.x
-	v.y -= vec.y
-	v.z -= vec.z
-	return v
-}
-
-func multiplyNRGBA(col color.NRGBA, m float64) color.NRGBA {
-	if m < 0 {
-		return col
-	}
-	r := math.Min(255, float64(col.R)*m)
-	g := math.Min(255, float64(col.G)*m)
-	b := math.Min(255, float64(col.B)*m)
-	return color.NRGBA{uint8(r), uint8(g), uint8(b), 255}
-}
-
-type screen struct {
-	fov           float64
-	aspectRatio   float64
-	height, width float64
-
-	// perspectivePoint vector
-
-	pixels [][]color.NRGBA
-}
-
-func makeScreen(height, width, fov float64) (scrn screen) {
-	scrn.height = height
-	scrn.width = width
-	scrn.fov = (math.Pi * fov / 180)
-	scrn.aspectRatio = (width / height)
-	// scrn.perspectivePoint = makeVector(0, (width/2)*math.Tan(scrn.fov/2), 0)
-
-	scrn.pixels = make([][]color.NRGBA, int(widthRes), int(widthRes))
-	for i := 0; i < int(widthRes); i++ {
-		scrn.pixels[i] = make([]color.NRGBA, int(heightRes), int(heightRes))
-		for j := 0; j < int(heightRes); j++ {
-			scrn.pixels[i][j] = black
-		}
-	}
-	return scrn
-}
-
-func (scrn screen) at(x, y int) color.Color {
-	return scrn.pixels[x][y]
-}
-
-func (scrn screen) point(x, y int) vector {
-	i := float64(x) / widthRes
-	j := float64(y) / heightRes
-
-	xdir := (2*i - 1) * math.Tan(scrn.fov/2) * scrn.aspectRatio
-	zdir := (1 - (2 * j)) * math.Tan(scrn.fov/2)
-
-	// v := scrn.topLeft.add(xdir.mul(i))
-	// v = v.add(ydir.mul(j))
-
-	v := makeVector(xdir, 0, zdir)
-	return v
-}
-
-type camera struct {
-	posn vector
-}
-
 type object interface {
 	obstruct(direction, origin vector, verbosity bool) float64
 	directIllumination(l light, point vector, objects []object) color.NRGBA
@@ -136,20 +18,12 @@ type sphere struct {
 	col    color.NRGBA
 }
 
+// sphere constructor
 func (sphr sphere) color() color.NRGBA {
 	return sphr.col
 }
 
-type circle struct {
-	center vector
-	radius float64
-	col    color.NRGBA
-}
-
-func (crcl circle) color() color.NRGBA {
-	return crcl.col
-}
-
+// sphere constructor
 func makeSphere(x, y, z, r float64, col color.NRGBA) (sphr sphere) {
 	sphr.center = makeVector(x, y, z)
 	sphr.radius = r
@@ -157,18 +31,9 @@ func makeSphere(x, y, z, r float64, col color.NRGBA) (sphr sphere) {
 	return sphr
 }
 
-func (crcl circle) obstruct(direction, origin vector, verbosity bool) float64 {
-	s := crcl.center.y / direction.y
-	p := direction.mul(s).add(origin)
-	// fmt.Println(p)
-	mag := (p.x-crcl.center.x)*(p.x-crcl.center.x) + (p.z-crcl.center.z)*(p.z-crcl.center.z) - crcl.radius*crcl.radius
-	if mag < errorDelta { //&& mag > -errorDelta {
-		// fmt.Println(mag)
-		return s
-	}
-	return math.Inf(1)
-}
-
+// sphere, vector, vector, (verbosity) ->  float64
+// determines if a ray will intersect a given sphere, returning the length of ray at point of intersection
+// returns infinity if ray does not intersect sphere
 func (sphr sphere) obstruct(direction, origin vector, verbosity bool) float64 {
 	//	|(s*d+p) - c|^2 = r^2
 	//	s = mag
@@ -236,20 +101,19 @@ func (sphr sphere) obstruct(direction, origin vector, verbosity bool) float64 {
 	}
 }
 
-// func (sphr sphere) obstruct(direction, origin vector) float64 {
-// 	diff := sphr.center.sub(origin)
-// 	v := diff.dot(direction)
-// 	disc := (sphr.radius * sphr.radius) - (diff.dot(diff) - (v * v))
-// 	if disc < 0 {
-// 		return -1
-// 	}
-// 	return v - math.Sqrt(disc)
-// }
+// returns a unit ray in a random direction in a hemisphere around given normal
+func sampleHemisphere(n vector, phi, sina, cosa float64) vector {
+	w := n.direction()
+	u := 
+
+	return theta, phi
+}
 
 type light struct {
 	posn vector
 }
 
+// determines what color to display at given point
 func (sphr sphere) directIllumination(l light, point vector, objects []object) color.NRGBA {
 	dir := l.posn.sub(point).direction()
 	ambientFactor := 0.1
@@ -267,3 +131,28 @@ func (sphr sphere) directIllumination(l light, point vector, objects []object) c
 
 	return multiplyNRGBA(col, colorFactor)
 }
+
+
+// type circle struct {
+// 	center vector
+// 	radius float64
+// 	col    color.NRGBA
+// }
+
+// // color accessor 
+// func (crcl circle) color() color.NRGBA {
+// 	return crcl.col
+// }
+
+// // 
+// func (crcl circle) obstruct(direction, origin vector, verbosity bool) float64 {
+// 	s := crcl.center.y / direction.y
+// 	p := direction.mul(s).add(origin)
+// 	// fmt.Println(p)
+// 	mag := (p.x-crcl.center.x)*(p.x-crcl.center.x) + (p.z-crcl.center.z)*(p.z-crcl.center.z) - crcl.radius*crcl.radius
+// 	if mag < errorDelta { //&& mag > -errorDelta {
+// 		// fmt.Println(mag)
+// 		return s
+// 	}
+// 	return math.Inf(1)
+// }

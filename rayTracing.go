@@ -53,9 +53,10 @@ var pink = color.NRGBA{
 	G: uint8(20),
 	B: uint8(20),
 	A: 255,
-}
+} // End of constants
 
-// Write data to file
+// str, screen -> write(png)
+// Write stored in a screen struct to a file
 func createImage(fileName string, scrn screen) {
 	img := image.NewRGBA(image.Rect(0, 0, int(widthRes), int(heightRes)))
 	for y := 0; y < int(widthRes); y++ {
@@ -79,17 +80,6 @@ func createImage(fileName string, scrn screen) {
 	}
 }
 
-// Find the smallest number in a slice of numbers
-func lstMin(lst []float64) float64 {
-	rtrn := lst[0]
-	for _, elem := range lst {
-		if elem < rtrn {
-			rtrn = elem
-		}
-	}
-	return rtrn
-}
-
 func main() {
 	// creating the perspective point, and plane to be colored
 	var scrn = makeScreen(500, 500, 80.0)
@@ -100,21 +90,21 @@ func main() {
 	// var sun = light{makeVector(0, -1, 0)}
 	// var sun = light{makeVector(0, 200, 50)}
 
-	bx := makeBox(
-		2, 90, 2,
-		6, 110, 6,
-		white,
-	)
-	bx2 := makeBox(
-		-8, 100, -8,
-		-2, 120, -5,
-		blue,
-	)
+	// bx := makeBox(
+	// 	2, 90, 2,
+	// 	6, 110, 6,
+	// 	white,
+	// )
+	// bx2 := makeBox(
+	// 	-8, 100, -8,
+	// 	-2, 120, -5,
+	// 	blue,
+	// )
 
 	sphr := makeSphere(7, 110, 3, 3, blue) // an object in the worldspace
 	objects := make([]object, 0)
-	objects = append(objects, bx)
-	objects = append(objects, bx2)
+	// objects = append(objects, bx)
+	// objects = append(objects, bx2)
 	objects = append(objects, sphr)
 	objects = append(objects, makeSphere(-3, 100, 3, 4, blue))
 	objects = append(objects, makeSphere(3, 130, -2, 2, pink))
