@@ -80,7 +80,7 @@ func createImage(fileName string, scrn screen) {
 	}
 }
 
-func main() {
+func initializeScene() (screen, light, []object) {
 	// creating the perspective point, and plane to be colored
 	var scrn = makeScreen(500, 500, 80.0)
 
@@ -89,36 +89,43 @@ func main() {
 	// var sun = light{makeVector(500, -1000, 20)}
 	// var sun = light{makeVector(0, -1, 0)}
 	// var sun = light{makeVector(0, 200, 50)}
+	// var sun = light{makeVector(0, 90, 0)}
 
-	// bx := makeBox(
-	// 	2, 90, 2,
-	// 	6, 110, 6,
-	// 	white,
-	// )
-	// bx2 := makeBox(
-	// 	-8, 100, -8,
-	// 	-2, 120, -5,
-	// 	blue,
-	// )
-
-	sphr := makeSphere(7, 110, 3, 3, blue) // an object in the worldspace
+	bx := makeBox(
+		2, 90, 2,
+		6, 110, 6,
+		white,
+	)
+	bx2 := makeBox(
+		-8, 100, -8,
+		-2, 120, -5,
+		blue,
+	)
+	sphr := makeSphere(7, 110, 3, 3, purple) // an object in the worldspace
 	objects := make([]object, 0)
-	// objects = append(objects, bx)
-	// objects = append(objects, bx2)
+	objects = append(objects, bx)
+	objects = append(objects, bx2)
 	objects = append(objects, sphr)
 	objects = append(objects, makeSphere(-3, 100, 3, 4, blue))
 	objects = append(objects, makeSphere(3, 130, -2, 2, pink))
 
 	// objects := emma()
+	return scrn, sun, objects
+}
+
+func getDirection(scrn screen, x, y int) (vector, vector) {
+	screenPoint := scrn.point(x, y) // worldspace coordinate for a given x,y pixel coordinate
+	zoom := 10.0                    //(scrn.width / 2) * math.Tan(scrn.fov/2)
+	dir := (screenPoint.sub(makeVector(0, -zoom, 0))).direction()
+	return screenPoint, dir
+}
+
+func main() {
+	scrn, sun, objects := initializeScene()
 
 	for x := 0; x < widthRes; x++ {
 		for y := 0; y < widthRes; y++ {
-			screenPoint := scrn.point(x, y) // worldspace coordinate for a given x,y pixel coordinate
-			yDir := 10.0                    //(scrn.width / 2) * math.Tan(scrn.fov/2)
-			dir := (screenPoint.sub(makeVector(0, -yDir, 0))).direction()
-			// dir.x += rand.NormFloat64() * 20
-			// dir.y += rand.NormFloat64() * 20 // ADDING A BIT OF RANDOMNESS
-			// dir.z += rand.NormFloat64() * 20 // DENSITY OF POINTS CREATE PROPER CIRCLE
+			screenPoint, dir := getDirection(scrn, x, y)
 
 			minMag := math.Inf(1)
 			for _, obj := range objects {
@@ -140,18 +147,8 @@ func main() {
 
 				scrn.pixels[x][y] = pink
 			}
-
-			// if minMag < math.Inf(1) {
-			// 	lightFactor := obj.directIllumination(sun, dir.mul(minMag).add(screenPoint), objects)
-			// 	scrn.pixels[x][y] = lightFactor
-
-			// }
 		}
 	}
-
-	// cp := makeVector(400, 300, 0)
-	// fmt.Println(cp, cp.mul(25/cp.y), scrn.point(283, 250))
-	// scrn.pixels[283][250] = pink
 
 	createImage("image.png", scrn)
 }

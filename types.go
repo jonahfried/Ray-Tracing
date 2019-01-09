@@ -102,12 +102,12 @@ func (sphr sphere) obstruct(direction, origin vector, verbosity bool) float64 {
 }
 
 // returns a unit ray in a random direction in a hemisphere around given normal
-func sampleHemisphere(n vector, phi, sina, cosa float64) vector {
-	w := n.direction()
-	u := 
+// func sampleHemisphere(n vector, phi, sina, cosa float64) vector {
+// 	w := n.direction()
+// 	u :=
 
-	return theta, phi
-}
+// 	return theta, phi
+// }
 
 type light struct {
 	posn vector
@@ -116,7 +116,7 @@ type light struct {
 // determines what color to display at given point
 func (sphr sphere) directIllumination(l light, point vector, objects []object) color.NRGBA {
 	dir := l.posn.sub(point).direction()
-	ambientFactor := 0.1
+	ambientFactor := 0.2
 	var col = sphr.col
 	for _, obj := range objects {
 		stoppingPoint := obj.obstruct(dir, point, false)
@@ -132,19 +132,18 @@ func (sphr sphere) directIllumination(l light, point vector, objects []object) c
 	return multiplyNRGBA(col, colorFactor)
 }
 
-
 // type circle struct {
 // 	center vector
 // 	radius float64
 // 	col    color.NRGBA
 // }
 
-// // color accessor 
+// // color accessor
 // func (crcl circle) color() color.NRGBA {
 // 	return crcl.col
 // }
 
-// // 
+// //
 // func (crcl circle) obstruct(direction, origin vector, verbosity bool) float64 {
 // 	s := crcl.center.y / direction.y
 // 	p := direction.mul(s).add(origin)
