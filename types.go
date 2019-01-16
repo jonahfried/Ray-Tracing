@@ -6,24 +6,31 @@ import (
 	"math"
 )
 
+// object is an interface type
+// represents a physical mass in the worldspace that interacts with light
 type object interface {
 	obstruct(direction, origin vector, verbosity bool) float64
 	directIllumination(l light, point vector, objects []object) color.NRGBA
 	color() color.NRGBA
 }
 
+// sphere is a struct type
+// implements the object interface
+// stores a center, radius, and color
 type sphere struct {
 	center vector
 	radius float64
 	col    color.NRGBA
 }
 
-// sphere constructor
+// sphr -> color.NRGBA
+// returns a given sphere's color
 func (sphr sphere) color() color.NRGBA {
 	return sphr.col
 }
 
-// sphere constructor
+// float64, float64, float64, float64, float64, color.NRGBA -> sphere
+// sphere constructor, returning an instance of a sphere struct
 func makeSphere(x, y, z, r float64, col color.NRGBA) (sphr sphere) {
 	sphr.center = makeVector(x, y, z)
 	sphr.radius = r
@@ -32,33 +39,30 @@ func makeSphere(x, y, z, r float64, col color.NRGBA) (sphr sphere) {
 }
 
 // sphere, vector, vector, (verbosity) ->  float64
-// determines if a ray will intersect a given sphere, returning the length of ray at point of intersection
-// returns infinity if ray does not intersect sphere
+//	|(s*d+p) - c|^2 = r^2
+// 	s^2(d.x^2+d.y^2+d.z^2) + s*2(d.x(offset.x)+d.y(offset.y)+d.z(offset.z))+(|offset|^2-radius^2) = 0
+//	s = mag
+//	p = starting point
+//	d = unit direction vec
+//	c = center
+//	r = radius sphere
+// analyzing the quadratic equation to determine whether there exists a solution
+// to the ray-sphere intersection. If there is an intersection, returns magnitude of ray
+// to point of intersection. If there are two solutions, returns the smaller positive solution.
+// If there is no intersection returns infinity.
+// (accepts a verbosity parameter for testing; prints calculated values)
 func (sphr sphere) obstruct(direction, origin vector, verbosity bool) float64 {
-	//	|(s*d+p) - c|^2 = r^2
-	//	s = mag
-	//	p = starting point
-	//	d = unit direction vec
-	//	c = center
-	//	r = radius sphere
-	offset := origin.sub(sphr.center)
-	// s^2(d.x^2+d.y^2+d.z^2) + s*2(d.x(offset.x)+d.y(offset.y)+d.z(offset.z))+(|offset|^2-radius^2) = 0
-	a := (direction.x * direction.x) + (direction.y * direction.y) + (direction.z * direction.z)
-	b := 2 * (direction.x*(offset.x) + direction.y*(offset.y) + direction.z*(offset.z))
-	c := (math.Pow((offset.x), 2) + math.Pow((offset.y), 2) + math.Pow((offset.z), 2) - (sphr.radius * sphr.radius))
 
-	// s = (-b ± sqrt(b*b - 4*(a)*(c)))/2a
-	discriminant := ((b * b) - (4 * a * c))
+	a, b, c := findCoefficients(sphr, direction, origin, verbosity)
+	discriminant := findDiscriminant(a, b, c)
 
-	if verbosity {
-		fmt.Printf("a:%f,\nb:%f,\nc:%f \n", a, b, c)
-	}
-	if discriminant < 0 {
+	if discriminant < 0 { // NO INTERSECTIONS
 		if verbosity {
 			fmt.Println(math.Inf(1))
 		}
 		return math.Inf(1)
-	} else if discriminant == 0 {
+
+	} else if discriminant == 0 { // ONE INTERSECTION
 		s := -b / (2 * a)
 		if s <= errorDelta {
 			if verbosity {
@@ -70,11 +74,12 @@ func (sphr sphere) obstruct(direction, origin vector, verbosity bool) float64 {
 			fmt.Println(s)
 		}
 		return s
-	} else {
+
+	} else { // TWO INTERSECTIONS
 		s1 := (-b - math.Sqrt(discriminant)) / (2 * a)
 		s2 := (-b + math.Sqrt(discriminant)) / (2 * a)
 		// use .000000001 (1e-9), instead of 0,
-		// to mitigate rounding errors.
+		// to prevent rounding errors.
 		if s1 <= errorDelta && s2 <= errorDelta {
 			if verbosity {
 				fmt.Println(math.Inf(1))
@@ -95,28 +100,49 @@ func (sphr sphere) obstruct(direction, origin vector, verbosity bool) float64 {
 			if verbosity {
 				fmt.Println(s)
 			}
-			// fmt.Println("test")
 			return s
 		}
 	}
 }
 
-// returns a unit ray in a random direction in a hemisphere around given normal
-// func sampleHemisphere(n vector, phi, sina, cosa float64) vector {
-// 	w := n.direction()
-// 	u :=
+// sphere, vector, vector, (verbosity) -> float64, float64, float64
+// returns the a, b, and c coefficients of the polynomial
+// 	s^2(d.x^2+d.y^2+d.z^2) + s*2(d.x(offset.x)+d.y(offset.y)+d.z(offset.z))+(|offset|^2-radius^2) = 0
+// where s is the magnitude of the given ray, and the solutions are
+// solutions to the intersection equation
+func findCoefficients(sphr sphere, direction, origin vector, verbosity bool) (float64, float64, float64) {
+	offset := origin.sub(sphr.center)
+	a := (direction.x * direction.x) + (direction.y * direction.y) + (direction.z * direction.z)
+	b := 2 * (direction.x*(offset.x) + direction.y*(offset.y) + direction.z*(offset.z))
+	c := (math.Pow((offset.x), 2) + math.Pow((offset.y), 2) + math.Pow((offset.z), 2) - (sphr.radius * sphr.radius))
 
-// 	return theta, phi
-// }
+	if verbosity {
+		fmt.Printf("a:%f,\nb:%f,\nc:%f \n", a, b, c)
+	}
+	return a, b, c
+}
 
+// float64, float64, float64 -> float64
+// returns the discrimanant of a quadratic polynomial
+func findDiscriminant(a, b, c float64) float64 {
+	// s = (-b ± sqrt(b*b - 4*(a)*(c)))/2a
+	return (b * b) - (4 * a * c)
+}
+
+// light is a struct type representing the source of lighting in a worldspace
 type light struct {
 	posn vector
 }
 
-// determines what color to display at given point
+// sphr, light, vector, []objects -> color.NRGBA
+// determines what color to display at given point:
+// Ambiently colors all points some fraction of their color.
+// Determines if the light can shine on given point.
+// If light hits, determines what additional portion of color to show, and returns scaled color.
 func (sphr sphere) directIllumination(l light, point vector, objects []object) color.NRGBA {
-	dir := l.posn.sub(point).direction()
-	ambientFactor := 0.2
+	ambientFactor := 0.2 // Cosmetic. Edit based on preference
+
+	dir := l.posn.sub(point).direction() // unit vector from point on sphere to light
 	var col = sphr.col
 	for _, obj := range objects {
 		stoppingPoint := obj.obstruct(dir, point, false)
@@ -124,34 +150,23 @@ func (sphr sphere) directIllumination(l light, point vector, objects []object) c
 			return multiplyNRGBA(col, ambientFactor)
 		}
 	}
-	normal := point.sub(sphr.center).direction()
-	diffuseFactor := 1 - ambientFactor
-	shadeFactor := math.Max(0, dir.dot(normal))
-	colorFactor := (ambientFactor + diffuseFactor*shadeFactor)
 
-	return multiplyNRGBA(col, colorFactor)
+	shader := sphr.determineColorBrightness(ambientFactor, point, dir)
+
+	return multiplyNRGBA(col, shader)
 }
 
-// type circle struct {
-// 	center vector
-// 	radius float64
-// 	col    color.NRGBA
-// }
+// sphere, float64, light, vector, vector -> float64
+// determines the proportion of lighting that is non-ambient
+// calculates the unit normal vector to the sphere at intersection point
+// using the direction of incoming light, and normal vector, determines amount of non-ambient
+// lighting to utilize.
+// returns sum of ambient and non-ambient lighting
+func (sphr sphere) determineColorBrightness(ambientFactor float64, point, photonDir vector) float64 {
+	diffuseFactor := 1 - ambientFactor
+	normal := point.sub(sphr.center).direction() // unit vector from sphere center to point on sphere
+	shadeFactor := math.Max(0, photonDir.dot(normal))
+	colorFactor := (ambientFactor + diffuseFactor*shadeFactor)
 
-// // color accessor
-// func (crcl circle) color() color.NRGBA {
-// 	return crcl.col
-// }
-
-// //
-// func (crcl circle) obstruct(direction, origin vector, verbosity bool) float64 {
-// 	s := crcl.center.y / direction.y
-// 	p := direction.mul(s).add(origin)
-// 	// fmt.Println(p)
-// 	mag := (p.x-crcl.center.x)*(p.x-crcl.center.x) + (p.z-crcl.center.z)*(p.z-crcl.center.z) - crcl.radius*crcl.radius
-// 	if mag < errorDelta { //&& mag > -errorDelta {
-// 		// fmt.Println(mag)
-// 		return s
-// 	}
-// 	return math.Inf(1)
-// }
+	return colorFactor
+}

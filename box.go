@@ -6,12 +6,18 @@ import (
 	"math"
 )
 
+// box is a struct type
+// a box is an axis-aligned rectangular prism
+// implements the object interface
 type box struct {
 	min, max vector
 	center   vector
 	col      color.NRGBA
 }
 
+// float64, float64, float64, float64, float64, float64, color.NRGBA -> box
+// box constructor. returns a box given:
+// x, y, z components of the points closest and furtherst from the origin.
 func makeBox(min1, min2, min3, max1, max2, max3 float64, col color.NRGBA) (b box) {
 	b.min = makeVector(min1, min2, min3)
 	b.max = makeVector(max1, max2, max3)
@@ -22,6 +28,9 @@ func makeBox(min1, min2, min3, max1, max2, max3 float64, col color.NRGBA) (b box
 	return b
 }
 
+// vector, float64, float64, float64, color.NRGBA -> box
+// alternate box constructor. returns a box given:
+// a vector representing the center of the box, a width, height and depth
 func makeBox2(center vector, width, height, depth float64, col color.NRGBA) (b box) {
 	dimensions := makeVector(width, depth, height).mul(.5)
 
@@ -32,21 +41,31 @@ func makeBox2(center vector, width, height, depth float64, col color.NRGBA) (b b
 	return b
 }
 
+// box -> color.NRGBA
+// returns a given box's color
 func (b box) color() color.NRGBA {
 	return b.col
 }
 
+// box, vector, vector, (verbosity) -> float64
+// returns the magnitude of the ray at point of intersection with the prism.
+// returns infinity if no intersection occurs.
+// Determines the magnitudes at which the ray intersects planes that comprise the prism.
+// looks for the smallest of these that satisfies the requirements of being on the prism.
 func (b box) obstruct(direction, origin vector, verbosity bool) float64 {
 	if verbosity {
 		fmt.Println(b.min.x-origin.x, b.min.x, origin.x)
 	}
+
 	t0x := (b.min.x - origin.x) / direction.x
 	t1x := (b.max.x - origin.x) / direction.x
 	t0y := (b.min.y - origin.y) / direction.y
 	t1y := (b.max.y - origin.y) / direction.y
+
 	if verbosity {
 		fmt.Println(b.min.z-origin.z, b.min.z, origin.z)
 	}
+
 	t0z := (b.min.z - origin.z) / direction.z
 	t1z := (b.max.z - origin.z) / direction.z
 
@@ -91,24 +110,6 @@ func (b box) obstruct(direction, origin vector, verbosity bool) float64 {
 	return tmin
 }
 
-// func (b box) directIllumination(l light, point vector, objects []object) color.NRGBA {
-// 	dir := l.posn.sub(point).direction()
-// 	ambientFactor := 0.2
-// 	var col = b.col
-// 	for _, obj := range objects {
-// 		stoppingPoint := obj.obstruct(dir, point, false)
-// 		if stoppingPoint != math.Inf(1) {
-// 			return multiplyNRGBA(col, ambientFactor)
-// 		}
-// 	}
-// 	normal := point.sub(b.center).direction()
-// 	diffuseFactor := 1 - ambientFactor
-// 	shadeFactor := math.Max(0, dir.dot(normal))
-// 	colorFactor := (ambientFactor + diffuseFactor*shadeFactor)
-
-// 	return multiplyNRGBA(col, colorFactor)
-// }
-
 func (b box) directIllumination(l light, point vector, objects []object) color.NRGBA {
 	dir := l.posn.sub(point).direction()
 	ambientFactor := 0.2
@@ -119,6 +120,31 @@ func (b box) directIllumination(l light, point vector, objects []object) color.N
 			return multiplyNRGBA(col, ambientFactor)
 		}
 	}
+
+	shader := b.determineColorBrightness(ambientFactor, point, dir)
+
+	return multiplyNRGBA(col, shader)
+}
+
+// box, float64, light, vector, vector -> float64
+// determines the proportion of lighting that is non-ambient
+// calculates the unit normal vector to the sphere at intersection point
+// using the direction of incoming light, and normal vector, determines amount of non-ambient
+// lighting to utilize.
+// returns sum of ambient and non-ambient lighting
+func (b box) determineColorBrightness(ambientFactor float64, point, photonDir vector) float64 {
+	diffuseFactor := 1 - ambientFactor
+	normal := b.findNormal(point)
+	shadeFactor := math.Max(0, photonDir.dot(normal))
+	colorFactor := (ambientFactor + diffuseFactor*shadeFactor)
+	return colorFactor
+}
+
+// box, vector -> vector
+// returns the normal to the face of a prism at a point.
+// attempts to determine on which face of axis-aligned prism the point sits.
+// uses the face to calculate the normal.
+func (b box) findNormal(point vector) vector {
 	normal := makeVector(0, 0, 0) //point.sub(b.center).direction()
 	if math.Abs(point.x-b.min.x) < errorDelta {
 		normal = makeVector(-1, 0, 0)
@@ -135,10 +161,5 @@ func (b box) directIllumination(l light, point vector, objects []object) color.N
 	} else {
 		fmt.Println("Point not placed:", math.Abs(point.x-b.min.x) < errorDelta)
 	}
-
-	diffuseFactor := 1 - ambientFactor
-	shadeFactor := math.Max(0, dir.dot(normal))
-	colorFactor := (ambientFactor + diffuseFactor*shadeFactor)
-
-	return multiplyNRGBA(col, colorFactor)
+	return normal
 }
