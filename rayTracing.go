@@ -113,7 +113,6 @@ func initializeScene() (screen, light, []object) {
 	objects = append(objects, makeSphere(-3, 100, 3, 4, blue))
 	objects = append(objects, makeSphere(3, 130, -2, 2, pink))
 
-	// objects := emma()
 	return scrn, sun, objects
 }
 
