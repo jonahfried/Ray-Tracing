@@ -105,13 +105,13 @@ func initializeScene() (screen, light, []object) {
 		-2, 120, -5,
 		blue,
 	)
-	sphr := makeSphere(7, 110, 3, 3, purple) // an object in the worldspace
+	sphr := makeSphere(7, 500, 3, 3, purple) // an object in the worldspace
 	objects := make([]object, 0)
 	objects = append(objects, bx)
 	objects = append(objects, bx2)
 	objects = append(objects, sphr)
-	objects = append(objects, makeSphere(-3, 100, 3, 4, blue))
-	objects = append(objects, makeSphere(3, 130, -2, 2, pink))
+	objects = append(objects, makeSphere(.4, 80, .4, .1, blue))
+	objects = append(objects, makeSphere(3, 500, -2, 2, pink))
 
 	return scrn, sun, objects
 }
@@ -123,7 +123,9 @@ func initializeScene() (screen, light, []object) {
 func getDirection(scrn screen, x, y int) (vector, vector) {
 	screenPoint := scrn.point(x, y)                                 // worldspace coordinate for a given x,y pixel coordinate
 	forwardComponent := (scrn.width / 2) / (math.Tan(scrn.fov / 2)) // forward component for the camera
-	dir := (screenPoint.add(makeVector(0, forwardComponent, 0))).direction()
+	// dir := (screenPoint.add(makeVector(0, forwardComponent, 0))).direction()
+	dir := makeVector(0, forwardComponent, 0).direction()
+
 	return screenPoint, dir
 }
 
